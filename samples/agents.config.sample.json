@@ -1,0 +1,72 @@
+{
+  "_comment": "サンプル設定：架空の5人チーム。自分のプロジェクトに合わせて repo_path とエージェント定義を書き換えてください。",
+  "repo_path": ".",
+  "team_name": "SAMPLE AI BALLPARK",
+  "subtitle": "5 AGENTS · ONE TEAM",
+  "home_label": "HOME",
+  "away_label": "AWAY",
+  "scoreboard_label": "AI BALLPARK",
+  "agents": [
+    {
+      "id": "planner",
+      "name": "Planner",
+      "role": "要件整理・タスク分解・優先順位付けを担当する。分類に一致しないコミットの受け皿でもある。",
+      "color": "#f3a94b",
+      "position": "P",
+      "is_fallback": true,
+      "match": {
+        "scope_tokens": ["plan", "planning"],
+        "subject_keywords": [],
+        "path_prefixes": ["docs/planning/"]
+      }
+    },
+    {
+      "id": "coder",
+      "name": "Coder",
+      "role": "実装・バグ修正・リファクタを担当する。",
+      "color": "#69aa99",
+      "position": "SS",
+      "match": {
+        "scope_tokens": ["coder", "core", "api"],
+        "subject_keywords": [],
+        "path_prefixes": ["src/", "lib/", "app/"]
+      }
+    },
+    {
+      "id": "designer",
+      "name": "Designer",
+      "role": "UI/UXデザイン・スタイル・アセット調整を担当する。",
+      "color": "#e98fa5",
+      "position": "LF",
+      "match": {
+        "scope_tokens": ["design", "ui", "style"],
+        "subject_keywords": [],
+        "path_prefixes": ["design/", "styles/", "assets/"]
+      }
+    },
+    {
+      "id": "qa",
+      "name": "QA",
+      "role": "品質検証・テスト設計・バグ検出を担当する。",
+      "color": "#9a88bd",
+      "position": "CF",
+      "match": {
+        "scope_tokens": ["test", "qa"],
+        "subject_keywords": [],
+        "path_prefixes": ["tests/", "__tests__/", "spec/"]
+      }
+    },
+    {
+      "id": "writer",
+      "name": "Writer",
+      "role": "ドキュメント・README・リリースノート執筆を担当する。",
+      "color": "#65a9c8",
+      "position": "RF",
+      "match": {
+        "scope_tokens": ["docs", "readme"],
+        "subject_keywords": [],
+        "path_prefixes": ["docs/", "README.md", "CHANGELOG.md"]
+      }
+    }
+  ]
+}

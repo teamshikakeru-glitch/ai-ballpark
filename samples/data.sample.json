@@ -1,0 +1,134 @@
+{
+  "_sample_data_notice": "これは架空のサンプルデータです。実在の企業・人物とは一切関係ありません。README記載のスクリーンショット・デモ表示専用で、generate_data.pyの実行結果ではありません。",
+  "generated_at": "2026-01-01T09:00:00+09:00",
+  "window_days": 7,
+  "team_name": "SAMPLE AI BALLPARK",
+  "subtitle": "5 AGENTS · ONE TEAM",
+  "home_label": "HOME",
+  "away_label": "AWAY",
+  "scoreboard_label": "AI BALLPARK",
+  "stats": {
+    "active_departments": 3,
+    "total_departments": 5,
+    "commits_7d": 12,
+    "commits_today": 2,
+    "commits_24h": 3,
+    "latest_artifact": "feat: add password reset flow"
+  },
+  "agents": [
+    {
+      "id": "planner",
+      "name": "Planner",
+      "role": "要件整理・タスク分解・優先順位付けを担当する。分類に一致しないコミットの受け皿でもある。",
+      "color": "#f3a94b",
+      "icon": "",
+      "position": "P",
+      "position_name": "投手",
+      "field_left": 50,
+      "field_top": 70.2,
+      "is_center": true,
+      "is_bench": false,
+      "status": "active",
+      "last_active": "2026-01-01T08:40:00+09:00",
+      "commits_7d": 2,
+      "bubbles": ["docs: reorganize roadmap for Q1", "chore: update issue templates"],
+      "recent_commits": [
+        { "hash": "a1b2c3d", "date": "2026-01-01 08:40", "subject": "docs: reorganize roadmap for Q1" },
+        { "hash": "9f8e7d6", "date": "2025-12-30 14:12", "subject": "chore: update issue templates" }
+      ]
+    },
+    {
+      "id": "coder",
+      "name": "Coder",
+      "role": "実装・バグ修正・リファクタを担当する。",
+      "color": "#69aa99",
+      "icon": "",
+      "position": "SS",
+      "position_name": "遊撃",
+      "field_left": 43,
+      "field_top": 57.5,
+      "is_center": false,
+      "is_bench": false,
+      "status": "active",
+      "last_active": "2026-01-01T09:00:00+09:00",
+      "commits_7d": 5,
+      "bubbles": ["feat: add password reset flow", "fix: null pointer in session handler", "refactor: extract auth middleware"],
+      "recent_commits": [
+        { "hash": "c4d5e6f", "date": "2026-01-01 09:00", "subject": "feat: add password reset flow" },
+        { "hash": "b3c4d5e", "date": "2025-12-31 16:22", "subject": "fix: null pointer in session handler" },
+        { "hash": "1a2b3c4", "date": "2025-12-30 11:05", "subject": "refactor: extract auth middleware" }
+      ]
+    },
+    {
+      "id": "designer",
+      "name": "Designer",
+      "role": "UI/UXデザイン・スタイル・アセット調整を担当する。",
+      "color": "#e98fa5",
+      "icon": "",
+      "position": "LF",
+      "position_name": "左翼",
+      "field_left": 23,
+      "field_top": 34.2,
+      "is_center": false,
+      "is_bench": false,
+      "status": "idle",
+      "last_active": "2025-12-28T13:10:00+09:00",
+      "commits_7d": 0,
+      "bubbles": [],
+      "recent_commits": [
+        { "hash": "d5e6f7a", "date": "2025-12-28 13:10", "subject": "style: update button hover states" }
+      ]
+    },
+    {
+      "id": "qa",
+      "name": "QA",
+      "role": "品質検証・テスト設計・バグ検出を担当する。",
+      "color": "#9a88bd",
+      "icon": "",
+      "position": "CF",
+      "position_name": "中堅",
+      "field_left": 50,
+      "field_top": 20.8,
+      "is_center": false,
+      "is_bench": false,
+      "status": "active",
+      "last_active": "2025-12-31T18:30:00+09:00",
+      "commits_7d": 3,
+      "bubbles": ["test: add regression suite for checkout", "test: cover edge cases in date parser"],
+      "recent_commits": [
+        { "hash": "e6f7a8b", "date": "2025-12-31 18:30", "subject": "test: add regression suite for checkout" },
+        { "hash": "f7a8b9c", "date": "2025-12-29 10:44", "subject": "test: cover edge cases in date parser" }
+      ]
+    },
+    {
+      "id": "writer",
+      "name": "Writer",
+      "role": "ドキュメント・README・リリースノート執筆を担当する。",
+      "color": "#65a9c8",
+      "icon": "",
+      "position": "RF",
+      "position_name": "右翼",
+      "field_left": 77,
+      "field_top": 34.2,
+      "is_center": false,
+      "is_bench": false,
+      "status": "idle",
+      "last_active": "2025-12-27T09:15:00+09:00",
+      "commits_7d": 0,
+      "bubbles": [],
+      "recent_commits": [
+        { "hash": "a8b9c0d", "date": "2025-12-27 09:15", "subject": "docs: write v1.2 release notes" }
+      ]
+    }
+  ],
+  "recent_artifacts": [
+    { "dept": "Coder", "text": "feat: add password reset flow", "date": "2026-01-01" },
+    { "dept": "Planner", "text": "docs: reorganize roadmap for Q1", "date": "2026-01-01" },
+    { "dept": "QA", "text": "test: add regression suite for checkout", "date": "2025-12-31" },
+    { "dept": "Coder", "text": "fix: null pointer in session handler", "date": "2025-12-31" },
+    { "dept": "Planner", "text": "chore: update issue templates", "date": "2025-12-30" },
+    { "dept": "Coder", "text": "refactor: extract auth middleware", "date": "2025-12-30" },
+    { "dept": "QA", "text": "test: cover edge cases in date parser", "date": "2025-12-29" },
+    { "dept": "Designer", "text": "style: update button hover states", "date": "2025-12-28" }
+  ]
+}

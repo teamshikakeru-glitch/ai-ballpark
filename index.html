@@ -1,0 +1,2119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Ballpark - agents.config.jsonで設定するチーム</title>
+<style>
+  :root {
+    --wall: #2a1c12;
+    --wall-dark: #1e130c;
+    --floor-a: #4a3220;
+    --floor-b: #432c1c;
+    --wood: #6b4423;
+    --wood-dark: #4e3018;
+    --paper: #f3e6cf;
+    --ink: #2a1c12;
+    --amber: #e8a33d;
+    --amber-glow: #ffd68a;
+    --panel-bg: #241812;
+    --panel-border: #5c3f24;
+    --text-light: #f3e6cf;
+    --text-dim: #c9b294;
+    /* Phase 2: 右レール（ターミナル）・下段バー（社長室）のために画面領域を予約する。
+       %ではなく実寸clampにするのは、看板の重なり差し戻し（2026-07-13）と同じ理由：
+       「座標がたまたま避け合う」ことに頼らず、レイアウトそのもので衝突しないことを保証するため */
+    --rail-w: clamp(230px, 20vw, 300px);
+    --frontbar-h: clamp(130px, 16vh, 170px);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--wall-dark);
+    color: var(--text-light);
+    font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+    overflow: hidden;
+  }
+
+  #office {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background:
+      radial-gradient(ellipse at 50% 55%, var(--floor-a) 0%, var(--floor-b) 70%, var(--wall-dark) 100%);
+  }
+
+  /* ---------- 背面の壁エリア（2026-07-13差し戻し対応済み・以降は変更しない） ---------- */
+  #back-wall {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 22%;
+    background: linear-gradient(180deg, var(--wall) 0%, var(--wall-dark) 100%);
+    border-bottom: 6px solid var(--wood-dark);
+    display: grid;
+    grid-template-columns: minmax(220px, 340px) minmax(0, 1fr) minmax(220px, 340px);
+    align-items: center;
+    column-gap: 16px;
+    padding: 0 2vw;
+  }
+
+  #signboard {
+    grid-column: 2;
+    justify-self: center;
+    max-width: 100%;
+    background: var(--wood);
+    border: 3px solid var(--wood-dark);
+    border-radius: 6px;
+    padding: 10px 32px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5), inset 0 0 14px rgba(0,0,0,0.3);
+    text-align: center;
+  }
+
+  #signboard .company {
+    font-size: clamp(18px, 2.4vw, 34px);
+    font-weight: 700;
+    color: var(--amber-glow);
+    letter-spacing: 0.12em;
+    text-shadow: 0 0 10px rgba(255,214,138,0.55);
+    white-space: nowrap;
+  }
+  #signboard .sub {
+    font-size: clamp(9px, 0.9vw, 13px);
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+    margin-top: 2px;
+  }
+
+  /* ---------- 掲示板（壁パネル・左） ---------- */
+  .wall-panel {
+    width: 24vw;
+    min-width: 220px;
+    max-width: 340px;
+    background: var(--panel-bg);
+    border: 3px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 4px 10px rgba(0,0,0,0.4);
+  }
+  .wall-panel h2 {
+    margin: 0 0 8px 0;
+    font-size: clamp(11px, 1vw, 14px);
+    color: var(--amber);
+    border-bottom: 1px solid var(--panel-border);
+    padding-bottom: 4px;
+    letter-spacing: 0.08em;
+  }
+
+  #board-stats {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    row-gap: 6px;
+    font-size: clamp(10px, 0.85vw, 13px);
+  }
+  #board-stats .label { color: var(--text-dim); }
+  #board-stats .value { color: var(--amber-glow); font-weight: 700; text-align: right; }
+  #board-artifact {
+    margin-top: 8px;
+    font-size: clamp(9px, 0.8vw, 12px);
+    color: var(--text-light);
+    line-height: 1.5;
+    border-top: 1px dashed var(--panel-border);
+    padding-top: 6px;
+  }
+
+  /* ---------- 成果物モニター（壁パネル・右） ---------- */
+  #monitor-panel {
+    display: flex;
+    flex-direction: column;
+  }
+  #monitor-screen {
+    background: #08140f;
+    border: 2px solid #1e3a2c;
+    border-radius: 4px;
+    height: 92px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 0 12px rgba(0,255,140,0.15);
+  }
+  #monitor-ticker {
+    position: absolute;
+    white-space: nowrap;
+    top: 50%;
+    left: 0;
+    font-size: clamp(12px, 1vw, 14px);
+    line-height: 1;
+    color: #7CFFA0;
+    text-shadow: 0 0 6px rgba(124,255,160,0.5);
+    transform: translate(0, -50%);
+  }
+  #monitor-ticker span {
+    margin-right: 20px;
+  }
+  #monitor-ticker span::after {
+    content: "  /  ";
+    opacity: 0.5;
+  }
+
+  /* ---------- フロア（什器＋歩行キャラ配置エリア） ---------- */
+  /* Phase 2: 右にターミナルレール、下に社長室バーを「予約」するぶんだけ縮める。
+     縮めた後の%座標計算はJS側が現在のfloorボックスを基準に行うので追従する */
+  #floor {
+    position: absolute;
+    top: 22%;
+    left: 0;
+    width: calc(100% - var(--rail-w));
+    height: calc(78% - var(--frontbar-h));
+    overflow: hidden;
+  }
+
+  #furniture, #characters {
+    position: absolute;
+    inset: 0;
+  }
+  #furniture { z-index: 1; }
+  #characters { z-index: 2; }
+
+  .desk-slot {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .desk {
+    width: 92px;
+    height: 46px;
+    background: linear-gradient(180deg, var(--wood) 0%, var(--wood-dark) 100%);
+    border-radius: 6px;
+    border: 2px solid var(--wood-dark);
+    position: relative;
+    box-shadow: 0 6px 10px rgba(0,0,0,0.45);
+  }
+  .desk-slot.center .desk {
+    width: 116px;
+    height: 56px;
+  }
+  .desk::after { /* PCモニター */
+    content: "";
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 20px;
+    background: #15100b;
+    border: 2px solid #050403;
+    border-radius: 3px;
+    box-shadow: 0 0 8px 1px var(--pc-glow, rgba(232,163,61,0.5));
+  }
+
+  /* ---------- キャラクタートークン（什器から独立し、部屋を歩き回る） ---------- */
+  .char-token {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    transition: left 1.8s ease-in-out, top 1.8s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 110px;
+    cursor: pointer;
+  }
+  .char-token.slow-move {
+    transition-duration: 3.4s;
+  }
+  .char-token.center {
+    width: 140px;
+  }
+  .char-token:hover .body,
+  .char-token:hover .head {
+    filter: brightness(1.3);
+  }
+  /* 2026-07-13差し戻し（軽微・任意）：歩行中はマウスが乗った瞬間に座標補間を止め、
+     その場でクリックできるようにする（動く的をクリックしにくい問題への対処） */
+  .char-token.hover-pause {
+    transition: none !important;
+    z-index: 15;
+  }
+
+  .body {
+    width: 40px;
+    height: 30px;
+    border-radius: 50% 50% 40% 40%;
+    background: var(--accent, #b5533c);
+    position: relative;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+  }
+  .head {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--accent, #b5533c);
+    filter: brightness(1.15);
+    position: absolute;
+    top: -22px;
+    left: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.35);
+  }
+  .arm {
+    position: absolute;
+    width: 8px;
+    height: 14px;
+    background: var(--accent, #b5533c);
+    filter: brightness(0.9);
+    border-radius: 4px;
+    top: 2px;
+  }
+  .arm.left { left: -3px; transform-origin: top center; }
+  .arm.right { right: -3px; transform-origin: top center; }
+
+  .char-token.center .head,
+  .char-token.center .body {
+    filter: brightness(1.2) saturate(1.1);
+  }
+  .char-token.center .head { top: -26px; }
+
+  /* 稼働中：タイピングアニメ（自席にいる間） */
+  .char-token.active .head { animation: type-bob 0.55s ease-in-out infinite; }
+  .char-token.active .arm.left { animation: type-arm-l 0.4s ease-in-out infinite; }
+  .char-token.active .arm.right { animation: type-arm-r 0.4s ease-in-out infinite; }
+  @keyframes type-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(1.5px); }
+  }
+  @keyframes type-arm-l {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(-18deg); }
+  }
+  @keyframes type-arm-r {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(18deg); }
+  }
+
+  /* 待機中：呼吸アニメ（立ち止まっている間） */
+  .char-token.idle .body { animation: breathe 3.2s ease-in-out infinite; }
+  .char-token.idle .head { animation: breathe-head 3.2s ease-in-out infinite; }
+  @keyframes breathe {
+    0%, 100% { transform: scaleY(1); }
+    50% { transform: scaleY(1.05); }
+  }
+  @keyframes breathe-head {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-1px) rotate(1.5deg); }
+  }
+
+  /* 歩行中：typing/breatheより後に書き、同specificityで上書きする */
+  .char-token.walking .head {
+    animation: walk-bob 0.5s ease-in-out infinite;
+  }
+  .char-token.walking .body {
+    animation: walk-sway 0.5s ease-in-out infinite;
+  }
+  .char-token.walking .arm.left,
+  .char-token.walking .arm.right {
+    animation: none;
+    transform: rotate(0deg);
+  }
+  @keyframes walk-bob {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-3px) rotate(-4deg); }
+  }
+  @keyframes walk-sway {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(2px); }
+  }
+
+  .name-tag {
+    margin-top: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-light);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    white-space: nowrap;
+    background: rgba(20,13,8,0.55);
+    padding: 1px 6px;
+    border-radius: 8px;
+  }
+  .char-token.center .name-tag {
+    font-size: 13px;
+    color: var(--amber-glow);
+  }
+  .status-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .status-dot.active { background: #6bdc6b; box-shadow: 0 0 5px #6bdc6b; }
+  .status-dot.idle { background: #7a7a7a; }
+
+  /* 吹き出し */
+  .bubble {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(6px);
+    margin-bottom: 8px;
+    min-width: 140px;
+    max-width: 220px;
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 11.5px;
+    line-height: 1.4;
+    padding: 8px 10px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    z-index: 10;
+  }
+  .bubble::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 7px solid transparent;
+    border-top-color: var(--paper);
+  }
+  .bubble.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ---------- ターミナルレール（右） ---------- */
+  #terminal-rail {
+    position: absolute;
+    top: 22%;
+    right: 0;
+    width: var(--rail-w);
+    height: calc(78% - var(--frontbar-h));
+    background: linear-gradient(180deg, #14100b 0%, #0c0906 100%);
+    border-left: 5px solid var(--wood-dark);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+  }
+  #terminal-rail h2 {
+    margin: 0 0 6px 0;
+    font-size: clamp(11px, 1vw, 13px);
+    color: var(--amber);
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--panel-border);
+    padding-bottom: 4px;
+  }
+  #terminal-body {
+    flex: 1;
+    min-height: 0;
+    background: #050705;
+    border: 2px solid #16321f;
+    border-radius: 4px;
+    padding: 8px 10px;
+    overflow-y: auto;
+    font-family: "SF Mono", "Menlo", "Consolas", monospace;
+    font-size: clamp(9.5px, 0.8vw, 11.5px);
+    line-height: 1.5;
+    color: #86ffa8;
+    text-shadow: 0 0 4px rgba(134,255,168,0.35);
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  #terminal-body .t-line {
+    opacity: 0;
+    animation: t-in 0.25s ease forwards;
+  }
+  @keyframes t-in {
+    from { opacity: 0; transform: translateY(2px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  #terminal-cursor {
+    display: inline-block;
+    animation: t-blink 1s step-start infinite;
+  }
+  @keyframes t-blink { 50% { opacity: 0; } }
+  #terminal-meta {
+    margin-top: 6px;
+    font-size: 9px;
+    color: var(--text-dim);
+  }
+
+  /* ---------- 社長室チャット（下段バー） ---------- */
+  #front-bar {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: var(--frontbar-h);
+    background: linear-gradient(0deg, var(--wall) 0%, var(--wall-dark) 100%);
+    border-top: 6px solid var(--wood-dark);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 2vw;
+  }
+  #chat-panel {
+    width: min(380px, 34vw);
+    min-width: 260px;
+    height: calc(var(--frontbar-h) - 24px);
+    background: var(--panel-bg);
+    border: 3px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 4px 10px rgba(0,0,0,0.4);
+  }
+  #chat-panel h2 {
+    margin: 0 0 6px 0;
+    font-size: clamp(11px, 1vw, 13px);
+    color: var(--amber);
+    border-bottom: 1px solid var(--panel-border);
+    padding-bottom: 4px;
+  }
+  #chat-log {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    font-size: 10.5px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+  #chat-log .chat-entry {
+    margin-bottom: 6px;
+    color: var(--text-light);
+    border-bottom: 1px dashed rgba(255,255,255,0.08);
+    padding-bottom: 4px;
+  }
+  #chat-log .chat-entry .meta { color: var(--text-dim); font-size: 9px; }
+  #chat-log .chat-entry .reply { color: var(--amber-glow); margin-top: 2px; }
+  #chat-log .chat-entry .fail { color: #ff9d8a; margin-top: 2px; }
+  #chat-form-el { display: flex; gap: 4px; }
+  #chat-dept {
+    flex: 0 0 auto;
+    max-width: 92px;
+    background: var(--wood-dark);
+    color: var(--text-light);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    font-size: 10px;
+  }
+  #chat-text {
+    flex: 1;
+    min-width: 0;
+    background: #14100b;
+    color: var(--text-light);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+  #chat-send {
+    flex: 0 0 auto;
+    background: var(--amber);
+    color: var(--ink);
+    border: none;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  #chat-send:disabled { opacity: 0.5; cursor: default; }
+
+  /* ---------- 詳細モーダル（クリックで表示） ---------- */
+  #detail-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,6,3,0.62);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  #detail-overlay.show { display: flex; }
+  #detail-modal {
+    width: min(540px, 90vw);
+    max-height: 82vh;
+    overflow-y: auto;
+    background: var(--panel-bg);
+    border: 3px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 22px 26px;
+    position: relative;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  }
+  #detail-close {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 22px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  #detail-modal h2 { margin: 0 0 4px 0; color: var(--amber-glow); font-size: 21px; }
+  #detail-modal .role { color: var(--text-dim); font-size: 12.5px; margin-bottom: 10px; }
+  #detail-modal .status-line { font-size: 12.5px; margin-bottom: 6px; }
+  #detail-modal h3 {
+    font-size: 13px; color: var(--amber);
+    border-bottom: 1px solid var(--panel-border);
+    padding-bottom: 4px; margin: 16px 0 8px 0;
+  }
+  #detail-modal ul { list-style: none; margin: 0; padding: 0; }
+  #detail-modal li {
+    font-size: 12px; padding: 5px 0;
+    border-bottom: 1px dashed rgba(255,255,255,0.08);
+  }
+  #detail-modal .commit-hash { color: var(--amber); font-family: monospace; margin-right: 6px; }
+  #detail-modal .commit-date { color: var(--text-dim); margin-right: 6px; }
+  #detail-remove {
+    margin-top: 18px;
+    background: none;
+    border: 1px solid #b5533c;
+    color: #ff9d8a;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  #detail-remove:hover { background: rgba(181,83,60,0.15); }
+
+  /* ---------- +エージェント 追加モーダル ---------- */
+  #add-agent-btn {
+    border: 1px solid #dec49f;
+    border-radius: 999px;
+    background: #fffaf0;
+    color: #7a5a36;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 12px;
+    cursor: pointer;
+  }
+  #add-agent-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,6,3,0.62);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 110;
+  }
+  #add-agent-overlay.show { display: flex; }
+  #add-agent-modal {
+    width: min(460px, 90vw);
+    max-height: 86vh;
+    overflow-y: auto;
+    background: var(--panel-bg);
+    border: 3px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 22px 26px;
+    position: relative;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  }
+  #add-agent-close {
+    position: absolute; top: 10px; right: 14px;
+    background: none; border: none; color: var(--text-dim);
+    font-size: 22px; cursor: pointer; line-height: 1;
+  }
+  #add-agent-modal h2 { margin: 0 0 14px 0; color: var(--amber-glow); font-size: 19px; }
+  #add-agent-form label {
+    display: block; font-size: 11.5px; color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+  #add-agent-form input[type="text"],
+  #add-agent-form textarea,
+  #add-agent-form select {
+    display: block; width: 100%; margin-top: 4px;
+    background: #14100b; color: var(--text-light);
+    border: 1px solid var(--panel-border); border-radius: 4px;
+    padding: 6px 8px; font-size: 12.5px; font-family: inherit;
+    box-sizing: border-box;
+  }
+  #add-agent-form input[type="color"] {
+    display: block; margin-top: 4px; width: 60px; height: 28px;
+    border: 1px solid var(--panel-border); border-radius: 4px; background: none; padding: 0;
+  }
+  #add-agent-form textarea { resize: vertical; min-height: 40px; }
+  #add-agent-error { color: #ff9d8a; font-size: 12px; margin-bottom: 10px; min-height: 1em; }
+  #add-agent-submit {
+    background: var(--amber); color: var(--ink); border: none; border-radius: 5px;
+    padding: 8px 18px; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  #add-agent-submit:disabled { opacity: 0.5; cursor: default; }
+
+  #footer-note {
+    position: absolute;
+    bottom: calc(var(--frontbar-h) + 6px);
+    left: 12px;
+    font-size: 10px;
+    color: var(--text-dim);
+    opacity: 0.7;
+  }
+
+  /* ---------- Phase 3: Xで「AI社員が働いている」が一目で伝わる明るいUI ---------- */
+  :root {
+    --wall: #fff7ec;
+    --wall-dark: #f5e7d3;
+    --floor-a: #f5dfbd;
+    --floor-b: #edcf9f;
+    --wood: #c88952;
+    --wood-dark: #8f5f39;
+    --paper: #fffefa;
+    --ink: #3f332d;
+    --amber: #f08a5d;
+    --amber-glow: #ffcf73;
+    --panel-bg: rgba(255, 253, 248, 0.94);
+    --panel-border: #e7c79d;
+    --text-light: #493a32;
+    --text-dim: #8c7769;
+    --rail-w: clamp(236px, 18vw, 286px);
+    --frontbar-h: clamp(108px, 13vh, 132px);
+  }
+
+  html, body { background: #f3dfc5; color: var(--ink); }
+  #office {
+    background: #f2d9b3;
+    isolation: isolate;
+  }
+  #office::after {
+    content: "";
+    position: absolute;
+    inset: 25% var(--rail-w) var(--frontbar-h) 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: .26;
+    background:
+      linear-gradient(30deg, transparent 48%, rgba(152,103,62,.16) 49%, rgba(152,103,62,.16) 51%, transparent 52%) 0 0/72px 42px,
+      linear-gradient(-30deg, transparent 48%, rgba(152,103,62,.12) 49%, rgba(152,103,62,.12) 51%, transparent 52%) 0 0/72px 42px;
+  }
+
+  #back-wall {
+    height: 25%;
+    grid-template-columns: minmax(210px, 320px) minmax(310px, 1fr) minmax(210px, 320px);
+    background:
+      linear-gradient(90deg, transparent 0 8%, rgba(255,255,255,.7) 8% 22%, transparent 22% 78%, rgba(255,255,255,.7) 78% 92%, transparent 92%),
+      linear-gradient(180deg, #fffaf2 0%, #f7ead8 100%);
+    border-bottom: 7px solid #d9ad78;
+    box-shadow: 0 8px 24px rgba(113,73,42,.08);
+    z-index: 4;
+  }
+  #back-wall::before,
+  #back-wall::after {
+    content: "";
+    position: absolute;
+    top: 18%;
+    width: 12%;
+    height: 54%;
+    border: 5px solid #e2bf90;
+    border-radius: 18px 18px 6px 6px;
+    background:
+      linear-gradient(90deg, transparent 48%, rgba(255,255,255,.9) 49% 51%, transparent 52%),
+      linear-gradient(180deg, #bfe5ed 0 55%, #ffd0a1 56% 72%, #a9c18e 73%);
+    box-shadow: inset 0 0 0 5px rgba(255,255,255,.45);
+    z-index: -1;
+  }
+  #back-wall::before { left: 5.5%; }
+  #back-wall::after { right: 5.5%; }
+
+  #signboard {
+    position: relative;
+    background: linear-gradient(135deg, #fb9c72, #f27f63);
+    border: 0;
+    border-radius: 20px;
+    padding: 14px 40px 13px;
+    box-shadow: 0 12px 30px rgba(225,105,75,.22), inset 0 1px 0 rgba(255,255,255,.5);
+  }
+  /* 2026-07-14 OSS公開対応：絵文字を公開版UIの既定から外す（社内ルール準拠） */
+  #signboard .company { display: inline; color: #fff; text-shadow: none; font-weight: 900; }
+  #signboard .sub { color: rgba(255,255,255,.84); font-weight: 700; }
+  .live-pill {
+    position: absolute;
+    top: -13px;
+    right: -12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 3px solid #fff8ee;
+    border-radius: 999px;
+    background: #fff;
+    color: #e55f59;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    box-shadow: 0 5px 16px rgba(93,58,38,.16);
+  }
+  .live-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #ef6461; animation: live-pulse 1.5s infinite; }
+  @keyframes live-pulse { 50% { transform: scale(1.4); box-shadow: 0 0 0 5px rgba(239,100,97,.14); } }
+
+  .wall-panel {
+    width: 22vw;
+    background: rgba(255,255,255,.9);
+    border: 2px solid #ead4b4;
+    border-radius: 18px;
+    padding: 11px 14px;
+    box-shadow: 0 9px 24px rgba(111,76,47,.11), inset 0 1px 0 #fff;
+  }
+  .wall-panel h2 { color: #6f594c; border: 0; font-weight: 900; margin-bottom: 5px; }
+  #board-stats { row-gap: 3px; }
+  #board-stats .label { color: #9b8778; }
+  #board-stats .value { color: #ec765a; }
+  #board-artifact { border-color: #eedac0; padding-top: 4px; margin-top: 5px; color: #68564c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #monitor-screen { height: 76px; background: #eefbf3; border: 2px solid #bfe3ce; box-shadow: inset 0 0 18px rgba(65,173,112,.09); }
+  #monitor-ticker { color: #2f9362; text-shadow: none; font-weight: 800; }
+
+  #floor {
+    top: 25%;
+    width: calc(100% - var(--rail-w));
+    height: calc(75% - var(--frontbar-h));
+    overflow: visible;
+    z-index: 2;
+  }
+  #floor::before {
+    content: "TEAM LOUNGE";
+    position: absolute;
+    left: 50%;
+    top: 47%;
+    width: 29%;
+    height: 31%;
+    transform: translate(-50%, -50%);
+    display: grid;
+    place-items: center;
+    border: 3px solid rgba(255,255,255,.48);
+    border-radius: 50%;
+    background: rgba(255,246,225,.45);
+    color: rgba(156,106,67,.19);
+    font-size: clamp(13px, 1.5vw, 23px);
+    font-weight: 900;
+    letter-spacing: .18em;
+  }
+  .floor-decor { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+  .plant { position: absolute; width: 36px; height: 34px; border-radius: 50% 50% 42% 42%; background: #8fb37a; box-shadow: -14px 7px 0 -5px #76a56c, 14px 5px 0 -5px #a5c68c; }
+  .plant::after { content: ""; position: absolute; left: 5px; top: 25px; width: 27px; height: 22px; background: #d79762; border-radius: 4px 4px 12px 12px; }
+  .plant.one { left: 3%; top: 8%; }
+  .plant.two { right: 3%; top: 10%; transform: scale(.88); }
+  .coffee-corner { position: absolute; right: 3%; bottom: 8%; width: 82px; height: 38px; border-radius: 8px; background: #d39a64; box-shadow: 0 7px 0 #a87142; }
+  /* 2026-07-14 OSS公開対応：絵文字(☕)の代わりにCSSのみでマグカップの形を表現する */
+  .coffee-corner::before { content: ""; position: absolute; left: 18px; top: -13px; width: 22px; height: 17px; background:#fff7ec; border-radius: 2px 2px 7px 7px; box-shadow: 7px 4px 0 -4px #fff7ec; }
+  .coffee-corner::after { content: "CAFE"; position: absolute; right: 8px; top: 11px; color: #fff6e8; font-size: 9px; font-weight: 900; letter-spacing: .08em; }
+  .bookshelf { position: absolute; left: 2%; bottom: 7%; width: 74px; height: 54px; border: 7px solid #b77b49; border-radius: 5px; background: repeating-linear-gradient(90deg,#f18b6a 0 8px,#f7c76c 8px 16px,#7eb6a6 16px 24px); box-shadow: inset 0 -21px 0 rgba(255,255,255,.3); }
+
+  .desk-slot { z-index: 1; }
+  .desk {
+    width: 104px;
+    height: 49px;
+    border: 0;
+    border-radius: 10px 10px 7px 7px;
+    background: linear-gradient(180deg, #e7ad72, #c98a52);
+    box-shadow: 0 8px 0 #9d673d, 0 13px 18px rgba(108,70,39,.16), inset 0 2px 0 rgba(255,255,255,.35);
+  }
+  .desk-slot.center .desk { width: 132px; height: 58px; background: linear-gradient(180deg,#f0b86c,#d18c48); }
+  .desk::after { display: none; }
+  .laptop { position: absolute; left: 50%; top: -17px; width: 39px; height: 27px; transform: translateX(-50%); border: 3px solid #51453f; border-radius: 5px 5px 2px 2px; background: #2f2a27; box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 0 16px var(--pc-glow, rgba(240,138,93,.32)); }
+  /* 2026-07-14 OSS公開対応：絵文字(✦)は使わず、既存のglow(box-shadow)だけで画面の光を表現する */
+  .desk-item { position:absolute; right:10px; top:8px; width:9px; height:13px; border-radius:3px 3px 5px 5px; background:#f5f0e7; border-top:5px solid var(--pc-glow,#7fb4a5); }
+  .paper-stack { position:absolute; left:9px; top:9px; width:22px; height:13px; background:#fffdf8; border-radius:2px; transform:rotate(-5deg); box-shadow:3px 3px 0 #f0e6d6; }
+
+  .char-token { width: 126px; transition: left 2.2s cubic-bezier(.4,0,.2,1), top 2.2s cubic-bezier(.4,0,.2,1); filter: drop-shadow(0 6px 5px rgba(108,67,38,.16)); }
+  .char-token.slow-move { transition-duration: 3.4s; }
+  .char-token.center { width: 150px; }
+  .body { width: 47px; height: 33px; border-radius: 17px 17px 14px 14px; border: 3px solid rgba(255,255,255,.75); box-shadow: inset 0 -7px 0 rgba(0,0,0,.08); }
+  .body::before { content:""; position:absolute; left:9px; top:-3px; width:23px; height:10px; border-radius:0 0 10px 10px; background:#fff8ec; }
+  .head { width: 39px; height: 36px; top: -28px; left: 4px; background: #ffd8b5; border: 2px solid rgba(128,83,52,.09); filter:none; overflow:visible; }
+  .head::before { content:""; position:absolute; left:-2px; top:-4px; width:39px; height:15px; border-radius:20px 20px 7px 7px; background:var(--hair,#5c493f); }
+  .face { position:absolute; inset:0; }
+  .eye { position:absolute; top:15px; width:5px; height:7px; border-radius:50%; background:#443a35; animation: blink 4.8s infinite; }
+  .eye.left { left:9px; }
+  .eye.right { right:9px; }
+  .cheek { position:absolute; top:23px; width:7px; height:4px; border-radius:50%; background:rgba(244,130,132,.38); }
+  .cheek.left { left:4px; } .cheek.right { right:4px; }
+  .mouth { position:absolute; left:50%; top:23px; width:7px; height:4px; transform:translateX(-50%); border-bottom:2px solid #b56d65; border-radius:50%; }
+  @keyframes blink { 0%,46%,49%,100% { transform:scaleY(1); } 47%,48% { transform:scaleY(.1); } }
+  .arm { width: 9px; height: 16px; top: 5px; }
+  .feet { position:absolute; left:8px; bottom:-7px; width:31px; height:9px; }
+  .foot { position:absolute; width:13px; height:8px; border-radius:8px 8px 4px 4px; background:#66584f; }
+  .foot.left { left:0; } .foot.right { right:0; }
+  .char-token.walking .foot.left { animation:step-l .38s infinite alternate; }
+  .char-token.walking .foot.right { animation:step-r .38s infinite alternate; }
+  @keyframes step-l { to { transform:translateY(-4px) rotate(-8deg); } }
+  @keyframes step-r { to { transform:translateY(4px) rotate(8deg); } }
+  .role-icon { position:absolute; right:-9px; top:-8px; width:22px; height:22px; display:grid; place-items:center; border:2px solid #fff; border-radius:50%; background:#fff9ef; font-size:12px; box-shadow:0 3px 7px rgba(80,50,30,.16); }
+  .name-tag { margin-top: 10px; padding: 4px 8px; color:#58483e; text-shadow:none; background:rgba(255,255,255,.94); border:1.5px solid rgba(213,181,145,.65); box-shadow:0 4px 10px rgba(104,67,39,.10); font-size:10.5px; }
+  .char-token.center .name-tag { color:#754722; font-size:11.5px; border-color:#f2b66c; }
+  .status-dot.active { background:#54c98a; box-shadow:0 0 0 3px rgba(84,201,138,.13); }
+  .status-dot.idle { background:#a99d93; }
+  .bubble { min-width: 170px; max-width: 245px; padding: 9px 11px; border:2px solid #efd9bd; border-radius:14px; color:#4d4038; box-shadow:0 10px 26px rgba(99,64,39,.16); font-weight:700; }
+  .bubble::before { content:"いまの仕事"; display:block; margin-bottom:3px; color:var(--accent,#ee7d61); font-size:9px; font-weight:900; letter-spacing:.08em; }
+  .bubble::after { border-top-color:#efd9bd; }
+
+  #terminal-rail {
+    top: 25%; height: calc(75% - var(--frontbar-h));
+    background: #f8eee0;
+    border-left: 5px solid #e1bd8e;
+    padding: 12px;
+    box-shadow: inset 10px 0 22px rgba(133,91,53,.05);
+    z-index: 5;
+  }
+  #terminal-rail h2 { color:#735d50; border:0; font-weight:900; }
+  .rail-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .rail-heading h2 { margin:0; }
+  #log-toggle { border:1px solid #dec49f; border-radius:999px; background:#fffaf2; color:#806b5e; padding:4px 8px; font-size:9px; font-weight:800; cursor:pointer; }
+  #activity-feed { flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; gap:7px; padding-top:6px; }
+  .activity-card { position:relative; padding:9px 10px 9px 32px; border:1px solid #ead5b9; border-radius:12px; background:#fffdfa; color:#625147; box-shadow:0 4px 10px rgba(110,73,44,.06); animation:feed-in .45s ease both; }
+  .activity-card .feed-icon { position:absolute; left:8px; top:9px; font-size:15px; }
+  .activity-card strong { display:block; margin-bottom:2px; font-size:10px; color:#6b574b; }
+  .activity-card span { display:-webkit-box; overflow:hidden; color:#8a7466; font-size:9.5px; line-height:1.4; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+  @keyframes feed-in { from { opacity:0; transform:translateX(8px); } }
+  #terminal-rail.show-logs #activity-feed { display:none; }
+  #terminal-body { background:#26332f; border:0; border-radius:13px; padding:11px; color:#a9f0c0; text-shadow:none; box-shadow:0 8px 20px rgba(47,61,56,.15); }
+  #terminal-body { display:none; }
+  #terminal-rail.show-logs #terminal-body { display:block; }
+  #terminal-meta { color:#9b8778; }
+
+  #front-bar { height:var(--frontbar-h); background:#fff7ec; border-top:5px solid #ddb482; padding:10px 18px; justify-content:space-between; z-index:6; }
+  .mission-card { display:flex; align-items:center; gap:12px; max-width:calc(100% - min(390px, 36vw)); color:#685449; }
+  .mission-icon { width:44px; height:44px; flex:0 0 auto; display:grid; place-items:center; border-radius:14px; background:#ffdf94; box-shadow:0 6px 14px rgba(194,128,58,.14); }
+  /* 2026-07-14 OSS公開対応：絵文字(⚾)の代わりにCSSのみで縫い目つきボールを表現する */
+  .css-ball { position:relative; width:24px; height:24px; border-radius:50%; background:#fff8ec; box-shadow:inset 0 0 0 2px #d34e43, 0 2px 4px rgba(0,0,0,.18); }
+  .css-ball::before, .css-ball::after { content:""; position:absolute; top:50%; left:50%; width:17px; height:2px; background:#d34e43; }
+  .css-ball::before { transform:translate(-50%,-50%) rotate(24deg); }
+  .css-ball::after { transform:translate(-50%,-50%) rotate(-24deg); }
+  .mission-copy strong { display:block; font-size:clamp(13px,1.2vw,17px); color:#4c3d35; }
+  .mission-copy span { font-size:clamp(10px,.82vw,12px); color:#917c6e; }
+  #chat-panel { width:min(390px,36vw); height:calc(var(--frontbar-h) - 18px); background:#fff; border:2px solid #ead2b3; border-radius:15px; box-shadow:0 7px 17px rgba(108,69,38,.09); }
+  #chat-panel h2 { color:#735d50; border:0; margin-bottom:2px; }
+  #chat-dept, #chat-text { background:#fffaf3; color:#54443b; border:1px solid #dfc49f; }
+  #chat-send { background:#ef805f; color:#fff; border-radius:7px; }
+  #footer-note { bottom:calc(var(--frontbar-h) + 5px); color:#8d7768; }
+
+  #detail-overlay { background:rgba(78,57,43,.42); backdrop-filter:blur(4px); }
+  #detail-modal { background:#fffdf8; border:3px solid #eccba1; border-radius:22px; color:#4d4038; box-shadow:0 22px 60px rgba(78,48,27,.25); }
+  #detail-modal h2 { color:#e77d5c; }
+  #detail-modal h3 { color:#cc744f; border-color:#eedac0; }
+  #detail-modal .role, #detail-modal .commit-date, #detail-close { color:#907a6b; }
+  #detail-modal .commit-hash { color:#e17f5b; }
+
+  @media (max-width: 1050px) {
+    :root { --rail-w: 218px; }
+    .wall-panel { min-width:190px; padding:8px 10px; }
+    #back-wall { grid-template-columns:210px 1fr 210px; gap:8px; padding:0 10px; }
+    #signboard { padding:12px 20px; }
+    .bubble { min-width:145px; max-width:190px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .char-token, .char-token.slow-move { transition-duration:.01ms; }
+    *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; }
+  }
+
+  /* ---------- AI Ballpark：野球9ポジション（config駆動・1〜12人対応） ---------- */
+  #office { background:#172a25; }
+  #office::after { display:none; }
+  #back-wall {
+    background:
+      repeating-linear-gradient(90deg,rgba(255,255,255,.025) 0 2px,transparent 2px 28px),
+      linear-gradient(180deg,#183f38,#102d29);
+    border-bottom:6px solid #e6bd63;
+    box-shadow:0 6px 0 #8b5a32,0 14px 30px rgba(0,0,0,.25);
+  }
+  #back-wall::before,#back-wall::after { display:none; }
+  #signboard {
+    background:#102824;
+    border:4px solid #e8c568;
+    border-radius:4px;
+    box-shadow:0 0 0 5px #1c4940,0 12px 24px rgba(0,0,0,.28);
+    image-rendering:pixelated;
+  }
+  /* #signboard::before は絵文字なし（上記参照）。野球テーマの装飾はCSSの球場SVG側で表現する */
+  #signboard .company { color:#ffe39a; font-family:"SF Mono","Menlo",monospace; letter-spacing:.07em; }
+  #signboard .sub { color:#9bd5b5; font-family:"SF Mono","Menlo",monospace; }
+  .live-pill { border-radius:3px; border:3px solid #102824; background:#f4d36f; color:#3b3120; }
+  .wall-panel { border:3px solid #d3ac58; border-radius:4px; background:#153832; box-shadow:0 7px 0 #0c231f; color:#f7e8b4; }
+  .wall-panel h2 { color:#f2d475; font-family:"SF Mono","Menlo",monospace; }
+  #board-stats .label,#board-artifact { color:#b7d6c5; }
+  #board-stats .value { color:#ffdf6a; }
+  #board-artifact { border-color:#41665b; }
+  #monitor-screen { background:#071d19; border:3px solid #3d655a; border-radius:2px; box-shadow:inset 0 0 0 2px #0e2e28; }
+  #monitor-ticker { color:#78f0a2; font-family:"SF Mono","Menlo",monospace; }
+
+  #floor {
+    background:
+      radial-gradient(ellipse at 50% 106%,#b67e48 0 19%,transparent 19.5%),
+      radial-gradient(ellipse at 50% 100%,transparent 0 43%,rgba(240,214,143,.72) 43.2% 44%,transparent 44.3%),
+      repeating-linear-gradient(90deg,rgba(255,255,255,.025) 0 44px,rgba(0,0,0,.025) 44px 88px),
+      linear-gradient(180deg,#377b52,#245f43);
+    border-right:5px solid #e1b766;
+    overflow:hidden;
+  }
+  #floor::before {
+    content:"";
+    left:50%; top:61%; width:31%; height:72%;
+    border:0; border-radius:0;
+    background:#b87f49;
+    transform:translate(-50%,-50%) rotate(45deg);
+    box-shadow:inset 0 0 0 4px rgba(241,218,156,.5);
+    opacity:1;
+  }
+  #floor::after {
+    content:"";
+    position:absolute; left:50%; top:61%; width:12%; aspect-ratio:1;
+    transform:translate(-50%,-50%); border-radius:50%;
+    background:#aa7140; border:3px solid rgba(245,221,157,.75); z-index:0;
+  }
+  .floor-decor { display:none; }
+  .field-lines { position:absolute; inset:0; z-index:1; pointer-events:none; }
+  .foul-line { position:absolute; bottom:5%; left:50%; width:70%; height:3px; background:rgba(255,241,194,.72); transform-origin:left center; }
+  .foul-line.left { transform:rotate(-30deg); }
+  .foul-line.right { transform:rotate(-150deg); }
+  .base { position:absolute; width:15px; height:15px; transform:translate(-50%,-50%) rotate(45deg); background:#fff6d9; border:2px solid #d9c899; box-shadow:2px 2px 0 rgba(0,0,0,.2); }
+  .base.first { left:66%; top:67%; } .base.second { left:50%; top:43%; } .base.third { left:34%; top:67%; }
+  .home-plate { position:absolute; left:50%; top:91%; width:18px; height:16px; transform:translate(-50%,-50%); background:#fff6d9; clip-path:polygon(0 0,100% 0,100% 58%,50% 100%,0 58%); }
+  .pitching-rubber { position:absolute; left:50%; top:61%; width:24px; height:5px; transform:translate(-50%,-50%); background:#fff1cc; }
+  .dugout { position:absolute; bottom:3%; width:20%; height:31px; border:4px solid #d8ab59; border-bottom:0; background:#153d35; color:#f0d277; font:900 10px/24px "SF Mono",monospace; text-align:center; letter-spacing:.12em; }
+  .dugout.left { left:3%; } .dugout.right { right:3%; }
+  .pixel-ball { position:absolute; left:50%; top:61%; width:8px; height:8px; z-index:4; background:#fff9df; box-shadow:2px 0 #d34e43,-2px 0 #d34e43; image-rendering:pixelated; animation:ball-flight 5.8s steps(12,end) infinite; }
+  @keyframes ball-flight {
+    0%,20% { left:50%; top:61%; opacity:1; }
+    45% { left:27%; top:25%; opacity:1; }
+    65% { left:22%; top:25%; opacity:1; }
+    80%,100% { left:50%; top:61%; opacity:0; }
+  }
+
+  #furniture { z-index:1; }
+  .desk-slot,.desk { display:none; }
+  .position-spot { position:absolute; transform:translate(-50%,-50%); width:68px; height:29px; border:2px dashed rgba(255,238,180,.32); border-radius:50%; color:rgba(255,240,184,.68); font:900 9px/26px "SF Mono",monospace; text-align:center; letter-spacing:.08em; }
+  #characters { z-index:3; }
+  .char-token { width:142px; height:82px; filter:none; transition:left 1.15s steps(8,end),top 1.15s steps(8,end); }
+  .char-token.slow-move { transition-duration:1.8s; }
+  .char-token.center { width:154px; }
+  .char-token:hover .pixel-player { transform:translateY(-3px) scale(1.05); }
+  .pixel-player { position:relative; width:44px; height:54px; image-rendering:pixelated; transition:transform .15s steps(2,end); filter:drop-shadow(4px 5px 0 rgba(12,42,31,.38)); }
+  .pixel-head { position:absolute; left:10px; top:8px; width:24px; height:19px; background:#ffd3a6; box-shadow:-3px 3px #ffd3a6,3px 3px #ffd3a6; }
+  .pixel-head::before { content:""; position:absolute; left:4px; top:8px; width:4px; height:5px; background:#362e2b; box-shadow:12px 0 #362e2b; }
+  .pixel-head::after { content:""; position:absolute; left:9px; top:14px; width:7px; height:3px; background:#d8766c; }
+  .pixel-cap { position:absolute; z-index:2; left:7px; top:3px; width:30px; height:9px; background:var(--accent); box-shadow:4px -4px var(--accent),19px 7px var(--accent),-2px 7px var(--accent); }
+  .pixel-cap::after { content:"S"; position:absolute; left:12px; top:-3px; color:#fff5cf; font:900 8px/10px monospace; }
+  .pixel-body { position:absolute; left:7px; top:26px; width:30px; height:19px; background:#f6ead1; box-shadow:4px 0 var(--accent),8px 0 var(--accent),18px 0 var(--accent),22px 0 var(--accent),-4px 4px var(--accent),30px 4px var(--accent); }
+  .pixel-body::before { content:""; position:absolute; left:11px; top:3px; width:8px; height:11px; border-left:3px solid var(--accent); border-right:3px solid var(--accent); }
+  .pixel-body::after { content:"9"; position:absolute; left:11px; top:4px; color:#234b3c; font:900 8px/10px monospace; }
+  .pixel-legs { position:absolute; left:11px; top:45px; width:8px; height:7px; background:#f5e7cf; box-shadow:14px 0 #f5e7cf,0 6px #2d3431,14px 6px #2d3431; }
+  .pixel-glove { position:absolute; z-index:2; right:0; top:29px; width:9px; height:11px; background:#8c5836; box-shadow:3px 3px #6d422b; }
+  .char-token.walking .pixel-player { animation:pixel-run .28s steps(2,end) infinite; }
+  .char-token.fielding .pixel-player { animation:pixel-field .24s steps(2,end) 3; }
+  @keyframes pixel-run { 50% { transform:translateY(-4px); } }
+  @keyframes pixel-field { 50% { transform:translateX(5px) rotate(5deg); } }
+  .char-token.active .head,.char-token.active .arm,.char-token.idle .body,.char-token.idle .head,.char-token.walking .head,.char-token.walking .body,.char-token.walking .arm { animation:none; }
+  .head,.body,.arm,.feet,.role-icon { display:none; }
+  .name-tag { margin-top:1px; border:3px solid #173c34; border-radius:3px; background:#fff2c4; color:#243c33; box-shadow:4px 4px 0 rgba(9,34,28,.4); font:900 10px/15px "SF Mono","Menlo",monospace; }
+  .char-token.center .name-tag { border-color:#7a5728; color:#4a341e; font-size:11px; }
+  .status-dot { border-radius:0; width:7px; height:7px; }
+  .bubble { bottom:88%; border:4px solid #173c34; border-radius:3px; background:#fff5cf; box-shadow:6px 6px 0 rgba(9,34,28,.4); font:800 10px/1.45 "SF Mono","Menlo",monospace; }
+  .bubble::before { color:#b04435; }
+  .bubble::after { border-top-color:#173c34; }
+  .char-token.outfield .bubble { bottom:auto; top:78%; margin-top:9px; }
+  .char-token.outfield .bubble::after { top:auto; bottom:100%; border-top-color:transparent; border-bottom-color:#173c34; }
+
+  #terminal-rail { background:#102e29; border-left:5px solid #e0b45f; }
+  #terminal-rail h2,#terminal-meta { color:#f0d174; }
+  #log-toggle { border:2px solid #d4ac5c; border-radius:3px; background:#183f38; color:#f1d67e; font-family:monospace; }
+  .activity-card { border:2px solid #3b665b; border-radius:3px; background:#173d36; color:#e7dba9; box-shadow:3px 3px 0 #081f1b; }
+  .activity-card strong { color:#ffdc73; font-family:monospace; }
+  .activity-card span { color:#b9d5c4; }
+  #front-bar { background:#122f2a; border-color:#e2b960; }
+  .mission-icon { border-radius:3px; background:#f1cc68; }
+  .mission-copy strong { color:#ffe599; font-family:monospace; }
+  .mission-copy span { color:#aed0bd; }
+  #chat-panel { border:3px solid #d2a950; border-radius:3px; background:#173b35; box-shadow:4px 4px 0 #081f1b; }
+  #chat-panel h2 { color:#f0d174; font-family:monospace; }
+  #chat-dept,#chat-text { border:2px solid #4f756a; border-radius:2px; background:#0e2925; color:#e9e0b8; }
+  #chat-send { border-radius:2px; background:#e5bd5e; color:#25342d; }
+  #footer-note { color:#e8dca9; }
+
+  /* Phase 5: 実際の球場構造に沿った比率固定フィールド */
+  #floor {
+    background:
+      repeating-linear-gradient(90deg,#102f2a 0 34px,#12352f 34px 68px);
+  }
+  #floor::before,#floor::after { display:none; }
+  #furniture,#characters,.field-lines {
+    inset:auto;
+    left:50%;
+    top:50%;
+    width:min(100%, 100vh);
+    height:auto;
+    aspect-ratio:5 / 3;
+    transform:translate(-50%,-50%);
+  }
+  .field-lines { overflow:hidden; }
+  .ballpark-svg { display:block; width:100%; height:100%; }
+  .position-spot { display:none; }
+  .foul-line,.base,.home-plate,.pitching-rubber,.dugout { display:none; }
+  .char-token { width:104px; height:70px; }
+  .char-token.center { width:108px; }
+  .name-tag {
+    position:absolute;
+    left:50%;
+    top:-23px;
+    transform:translateX(-50%);
+    width:max-content;
+    max-width:104px;
+    margin:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    padding:2px 4px;
+    font-size:8.5px;
+    line-height:14px;
+    z-index:12;
+  }
+  .char-token.center .name-tag { font-size:9px; }
+  .char-token.catcher .name-tag { right:auto; top:-23px; }
+  #char-tabletops .name-tag { max-width:142px; top:-44px; }
+  .bubble {
+    min-width:150px;
+    max-width:190px;
+    bottom:auto;
+    top:1px;
+    left:calc(50% + 58px);
+    transform:none;
+    z-index:20;
+  }
+  .bubble.show { transform:none; }
+  .bubble::after {
+    top:17px;
+    left:auto;
+    right:100%;
+    transform:none;
+    border-top-color:transparent;
+    border-right-color:#173c34;
+  }
+  .char-token.right-side .bubble {
+    left:auto;
+    right:calc(50% + 58px);
+  }
+  .char-token.right-side .bubble::after {
+    left:100%; right:auto;
+    border-right-color:transparent;
+    border-left-color:#173c34;
+  }
+  .char-token.outfield .bubble {
+    top:75px;
+    bottom:auto;
+    left:50%;
+    right:auto;
+    transform:translateX(-50%);
+  }
+  .char-token.outfield .bubble.show { transform:translateX(-50%); }
+  .char-token.outfield .bubble::after {
+    top:auto;
+    bottom:100%;
+    left:50%;
+    right:auto;
+    transform:translateX(-50%);
+    border-left-color:transparent;
+    border-right-color:transparent;
+    border-bottom-color:#173c34;
+  }
+  .pixel-ball { left:50%; top:66%; }
+  @keyframes ball-flight {
+    0%,20% { left:50%; top:66%; opacity:1; }
+    44% { left:26%; top:30%; opacity:1; }
+    64% { left:23%; top:29%; opacity:1; }
+    80%,100% { left:50%; top:66%; opacity:0; }
+  }
+</style>
+</head>
+<body>
+<div id="office">
+
+  <div id="back-wall">
+    <div class="wall-panel" id="board-panel">
+      <h2>TODAY'S SCORE</h2>
+      <div id="board-stats">
+        <span class="label">守備中ポジション</span><span class="value" id="stat-active">-</span>
+        <span class="label">直近7日コミット</span><span class="value" id="stat-7d">-</span>
+        <span class="label">本日のコミット</span><span class="value" id="stat-today">-</span>
+      </div>
+      <div id="board-artifact">直近の成果物：<span id="stat-latest">読み込み中...</span></div>
+    </div>
+
+    <div id="signboard">
+      <div class="company">AI BALLPARK</div>
+      <div class="sub">CONFIGURE YOUR TEAM IN agents.config.json</div>
+      <div class="live-pill">AI TEAM LIVE</div>
+    </div>
+
+    <div class="wall-panel" id="monitor-panel">
+      <h2>PLAY-BY-PLAY</h2>
+      <div id="monitor-screen">
+        <div id="monitor-ticker">読み込み中...</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="floor">
+    <div class="floor-decor" aria-hidden="true">
+      <div class="plant one"></div>
+      <div class="plant two"></div>
+      <div class="bookshelf"></div>
+      <div class="coffee-corner"></div>
+    </div>
+    <div class="field-lines" aria-hidden="true">
+      <svg class="ballpark-svg" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet" role="img" aria-label="野球場の俯瞰図">
+        <defs>
+          <pattern id="mow" width="100" height="100" patternUnits="userSpaceOnUse">
+            <rect width="50" height="100" fill="#397d50"></rect><rect x="50" width="50" height="100" fill="#347348"></rect>
+          </pattern>
+          <filter id="fieldShadow"><feDropShadow dx="0" dy="4" stdDeviation="4" flood-opacity=".25"></feDropShadow></filter>
+        </defs>
+
+        <!-- 芝、左右対称の外野スタンド、ウォーニングトラック -->
+        <rect width="1000" height="600" fill="url(#mow)"></rect>
+        <path d="M70 85 C245 -15 755 -15 930 85" fill="none" stroke="#173a33" stroke-width="8"></path>
+        <path d="M70 85 C245 -15 755 -15 930 85" fill="none" stroke="#e7bd5f" stroke-width="3"></path>
+
+        <!-- 外野距離とセンタースコアボード -->
+        <rect x="420" y="5" width="160" height="38" rx="3" fill="#102b27" stroke="#d9ad58" stroke-width="4"></rect>
+        <text id="scoreboard-label" x="448" y="29" fill="#f1d16e" font-size="15" font-family="monospace" font-weight="900">AI BALLPARK</text>
+        <text x="67" y="104" fill="#f4d780" font-size="14" font-family="monospace" font-weight="900">98m</text>
+        <text x="483" y="61" fill="#f4d780" font-size="14" font-family="monospace" font-weight="900">122m</text>
+        <text x="906" y="104" fill="#f4d780" font-size="14" font-family="monospace" font-weight="900">98m</text>
+
+        <!-- 本塁から左右ポールへ伸びるファウルライン -->
+        <path d="M500 535 L70 85 M500 535 L930 85" fill="none" stroke="#fff1bf" stroke-width="4"></path>
+        <rect x="66" y="57" width="7" height="43" fill="#f5d348"></rect>
+        <rect x="927" y="57" width="7" height="43" fill="#f5d348"></rect>
+
+        <!-- 内野土はベースパスと各塁周辺のみ。内野中央は芝を維持 -->
+        <path d="M500 535 L620 415 L500 295 L380 415 Z" fill="none" stroke="#b97843" stroke-width="27" stroke-linejoin="round"></path>
+        <circle cx="500" cy="295" r="26" fill="#b97843"></circle>
+        <circle cx="620" cy="415" r="26" fill="#b97843"></circle>
+        <circle cx="380" cy="415" r="26" fill="#b97843"></circle>
+        <ellipse cx="500" cy="535" rx="70" ry="47" fill="#b97843"></ellipse>
+        <ellipse cx="500" cy="421" rx="39" ry="26" fill="#b97843"></ellipse>
+
+        <!-- 三塁バッグ、投手板、本塁、左右バッターボックス、捕手ボックス -->
+        <g filter="url(#fieldShadow)" fill="#fff9df" stroke="#d8c899" stroke-width="3">
+          <rect x="611" y="406" width="18" height="18" transform="rotate(45 620 415)"></rect>
+          <rect x="491" y="286" width="18" height="18" transform="rotate(45 500 295)"></rect>
+          <rect x="371" y="406" width="18" height="18" transform="rotate(45 380 415)"></rect>
+          <path d="M490 527 H510 V539 L500 548 L490 539 Z"></path>
+          <rect x="486" y="418" width="28" height="6" rx="2"></rect>
+        </g>
+        <g fill="none" stroke="#fff1c8" stroke-width="3">
+          <rect x="458" y="510" width="24" height="45"></rect><rect x="518" y="510" width="24" height="45"></rect>
+          <path d="M476 555 Q500 573 524 555"></path>
+        </g>
+
+        <!-- コーチャーズボックスとダッグアウト -->
+        <g fill="none" stroke="#f4dfaa" stroke-width="3" stroke-dasharray="7 6">
+          <rect x="668" y="448" width="70" height="24" transform="rotate(-43 703 460)"></rect>
+          <rect x="262" y="448" width="70" height="24" transform="rotate(43 297 460)"></rect>
+        </g>
+        <g>
+          <path d="M148 470 H350 L326 515 H127 Z" fill="#153a33" stroke="#d8ad58" stroke-width="5"></path>
+          <path d="M650 470 H852 L873 515 H674 Z" fill="#153a33" stroke="#d8ad58" stroke-width="5"></path>
+          <text id="dugout-label-home" x="190" y="498" fill="#f2d477" font-size="14" font-family="monospace" font-weight="900">HOME</text>
+          <text id="dugout-label-away" x="716" y="498" fill="#f2d477" font-size="14" font-family="monospace" font-weight="900">AWAY</text>
+        </g>
+      </svg>
+      <span class="pixel-ball"></span>
+    </div>
+    <div id="furniture"></div>
+    <div id="characters"></div>
+  </div>
+
+  <div id="terminal-rail">
+    <div class="rail-heading">
+      <h2>ベンチレポート</h2>
+      <div style="display:flex; gap:6px;">
+        <button id="add-agent-btn" type="button">+ エージェント</button>
+        <button id="log-toggle" type="button" aria-expanded="false">運用ログ</button>
+      </div>
+    </div>
+    <div id="activity-feed"></div>
+    <div id="terminal-body">接続中...</div>
+    <div id="terminal-meta">-</div>
+  </div>
+
+  <div id="front-bar">
+    <div class="mission-card">
+      <div class="mission-icon"><span class="css-ball"></span></div>
+      <div class="mission-copy"><strong id="mission-headline">AIエージェントが、それぞれの守備位置で会社を守る。</strong><span id="mission-sub">実際の成果と業務ログをもとに、チームプレーを可視化</span></div>
+    </div>
+    <div id="chat-panel">
+      <h2>監督室 - サインを送る</h2>
+      <div id="chat-log"></div>
+      <form id="chat-form-el">
+        <select id="chat-dept"></select>
+        <input id="chat-text" type="text" maxlength="500" placeholder="指示を入力..." autocomplete="off">
+        <button id="chat-send" type="submit">送信</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="footer-note">data.json 生成: <span id="footer-gen">-</span></div>
+</div>
+
+<div id="detail-overlay">
+  <div id="detail-modal">
+    <button id="detail-close" aria-label="閉じる">×</button>
+    <h2 id="detail-name">-</h2>
+    <div class="role" id="detail-role">-</div>
+    <div class="status-line" id="detail-status">-</div>
+    <h3>直近の仕事（吹き出しログ）</h3>
+    <ul id="detail-bubbles"></ul>
+    <h3>直近コミット</h3>
+    <ul id="detail-commits"></ul>
+    <button id="detail-remove" type="button">このエージェントを削除</button>
+  </div>
+</div>
+
+<div id="add-agent-overlay">
+  <div id="add-agent-modal">
+    <button id="add-agent-close" aria-label="閉じる">×</button>
+    <h2>+ エージェントを追加</h2>
+    <form id="add-agent-form">
+      <label>ID（半角小文字英数字・-・_のみ、1〜32文字）
+        <input id="aa-id" type="text" maxlength="32" placeholder="qa" required>
+      </label>
+      <label>名前
+        <input id="aa-name" type="text" maxlength="40" placeholder="QAチーム" required>
+      </label>
+      <label>役割説明
+        <textarea id="aa-role" maxlength="300" placeholder="品質検証・テスト設計を担当する"></textarea>
+      </label>
+      <label>色
+        <input id="aa-color" type="color" value="#5ba8c9">
+      </label>
+      <label>守備位置（空欄でベンチ扱い）
+        <select id="aa-position">
+          <option value="">（ベンチ）</option>
+          <option value="P">P（投手）</option>
+          <option value="C">C（捕手）</option>
+          <option value="1B">1B（一塁）</option>
+          <option value="2B">2B（二塁）</option>
+          <option value="3B">3B（三塁）</option>
+          <option value="SS">SS（遊撃）</option>
+          <option value="LF">LF（左翼）</option>
+          <option value="CF">CF（中堅）</option>
+          <option value="RF">RF（右翼）</option>
+        </select>
+      </label>
+      <label>分類：パスプレフィックス（1行1つ。例: QA/）
+        <textarea id="aa-paths" placeholder="QA/"></textarea>
+      </label>
+      <label>分類：スコープキーワード（1行1つ。コミット件名の (scope) 部分に一致）
+        <textarea id="aa-scopes" placeholder="QA&#10;qa"></textarea>
+      </label>
+      <div id="add-agent-error"></div>
+      <button id="add-agent-submit" type="submit">追加する</button>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // 2026-07-14 OSS公開対応：エージェントの色・アイコン・守備位置は全て
+  // generate_data.py が agents.config.json から data.json に埋め込んで渡してくる。
+  // ここ（index.html）には特定チーム固有の値を一切持たない（config駆動の一本化）。
+  // 各エージェントは data.agents[i] の color / icon / position / position_name /
+  // field_left / field_top / is_center / is_bench を参照する。
+
+  var ROTATE_MS = 3600;      // 吹き出しローテーション間隔
+  var BUBBLE_VISIBLE_MS = 2900;
+  var TICKER_SPEED_PX_PER_SEC = 90;
+  var TERMINAL_POLL_MS = 5000;
+
+  var latestData = null;
+  var lastTerminalKey = null;
+
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  // ---------------------------------------------------------------------
+  // 2026-07-13差し戻し対応（団子問題）：
+  // 「稼働中キャラ全員が同時に掲示板1点へ向かい、重なって名札が読めず
+  //  席が全部空になる」不具合をKEITO参考動画の落ち着き感まで引き上げる。
+  // 対策は2つ：
+  //   1. 目的地を「掲示板・棚・給湯スペース・他の席」の複数スポットに分散する
+  //   2. 同時に守備移動できる人数をグローバルなセマフォで最大2体に制限する
+  // ---------------------------------------------------------------------
+
+  var MAX_AWAY_FROM_DESK = 2;
+  var awayFromDeskCount = 0;
+
+  // 各選手の守備位置から外れない範囲で、捕球先候補を組み立てる。
+  // バッテリー(P/C)は動きを小さく、外野(LF/CF/RF)は大きく、内野はその中間にする
+  // （これは野球というテーマ自体の一般知識であり、特定のエージェント名には依存しない）。
+  function buildDestinationPool(agents, positions) {
+    var pools = {};
+    agents.forEach(function (a) {
+      var home = positions[a.id];
+      if (!home) return;
+      var isBattery = ["P","C"].indexOf(home.positionCode) >= 0;
+      var isOutfield = ["LF","CF","RF"].indexOf(home.positionCode) >= 0;
+      var rangeX = isBattery ? 2.5 : (isOutfield ? 4.5 : 3.5);
+      var rangeY = isBattery ? 3.3 : (isOutfield ? 5 : 4.2);
+      pools[a.id] = [
+        { left:clamp(home.left - rangeX, 8, 92), top:clamp(home.top - rangeY, 8, 89) },
+        { left:clamp(home.left + rangeX, 8, 92), top:clamp(home.top - rangeY / 2, 8, 89) },
+        { left:clamp(home.left + rangeX / 2, 8, 92), top:clamp(home.top + rangeY, 8, 89) }
+      ];
+    });
+    return pools;
+  }
+
+  function pickDestination(pool) {
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return "データなし";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    var pad = function (n) { return String(n).padStart(2, "0"); };
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
+      " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  // ---------------------------------------------------------------------
+  // レイアウト座標（什器・キャラクターの「自席」位置。両者で共有する）
+  // ---------------------------------------------------------------------
+
+  function computeLayoutPositions(agents) {
+    var positions = {};
+    agents.forEach(function (a) {
+      positions[a.id] = {
+        left: a.field_left, top: a.field_top,
+        positionCode: a.position, positionName: a.position_name,
+        isCenter: !!a.is_center, isBench: !!a.is_bench
+      };
+    });
+    return positions;
+  }
+
+  // ---------------------------------------------------------------------
+  // 什器（デスク）レイヤー：静的。キャラクターと分離し、二度と動かさない
+  // ---------------------------------------------------------------------
+
+  function buildFurniture(agents, positions) {
+    var furniture = document.getElementById("furniture");
+    furniture.innerHTML = "";
+    agents.forEach(function (a) {
+      var pos = positions[a.id];
+      if (!pos) return;
+      var slot = document.createElement("div");
+      slot.className = "position-spot";
+      slot.style.left = pos.left + "%";
+      slot.style.top = pos.top + "%";
+      slot.textContent = pos.positionCode + " ZONE";
+      furniture.appendChild(slot);
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // キャラクターレイヤー：歩き回る。名札を常時表示、クリックで詳細を開く
+  // ---------------------------------------------------------------------
+
+  function buildCharacters(agents, positions) {
+    var layer = document.getElementById("characters");
+    layer.innerHTML = "";
+    agents.forEach(function (a) {
+      var pos = positions[a.id];
+      if (!pos) return;
+      var restClass = a.status === "active" ? "active" : "idle";
+
+      var token = document.createElement("div");
+      token.className = "char-token " + restClass + (pos.isCenter ? " center" : "") +
+        (["LF","CF","RF"].indexOf(pos.positionCode) >= 0 ? " outfield" : "") +
+        (pos.positionCode === "C" ? " catcher" : "") +
+        (pos.left < 38 ? " left-side" : "") + (pos.left > 62 ? " right-side" : "");
+      token.id = "char-" + a.id;
+      token.style.left = pos.left + "%";
+      token.style.top = pos.top + "%";
+      token.style.zIndex = String(100 + Math.round(pos.top));
+      token.style.setProperty("--accent", a.color || "#b5533c");
+      token.setAttribute("aria-label", a.name + "の詳細を開く");
+      token.setAttribute("role", "button");
+      token.tabIndex = 0;
+      token.addEventListener("click", function () { openDetail(a.id); });
+      token.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") openDetail(a.id);
+      });
+      // 歩行中でもクリックしやすいよう、ホバー中は移動アニメーションを一時停止する
+      token.addEventListener("mouseenter", function () { token.classList.add("hover-pause"); });
+      token.addEventListener("mouseleave", function () { token.classList.remove("hover-pause"); });
+
+      var bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.id = "bubble-" + a.id;
+
+      var player = document.createElement("div");
+      player.className = "pixel-player";
+      ["pixel-cap", "pixel-head", "pixel-body", "pixel-legs", "pixel-glove"].forEach(function (className) {
+        var part = document.createElement("span");
+        part.className = className;
+        player.appendChild(part);
+      });
+
+      var tag = document.createElement("div");
+      tag.className = "name-tag";
+      tag.id = "nametag-" + a.id;
+      var dot = document.createElement("span");
+      dot.className = "status-dot " + restClass;
+      var label = document.createElement("span");
+      label.className = "nametag-text";
+      label.textContent = pos.positionCode + " " + a.name;
+      tag.appendChild(dot);
+      tag.appendChild(label);
+
+      token.appendChild(bubble);
+      token.appendChild(player);
+      token.appendChild(tag);
+      layer.appendChild(token);
+    });
+  }
+
+  function updateNameTag(agentId, statusText) {
+    var tag = document.getElementById("nametag-" + agentId);
+    if (!tag || !latestData) return;
+    var label = tag.querySelector(".nametag-text");
+    var agent = latestData.agents.filter(function (a) { return a.id === agentId; })[0];
+    if (label && agent) label.textContent = agent.position + " " + agent.name;
+  }
+
+  // ---------------------------------------------------------------------
+  // 歩行エンジン：left/topのCSS transitionで座標補間し、transitionendで完了検知する
+  // （タイマー時間をCSSと二重管理しない。実際に到着したことをイベントで確認する）
+  // ---------------------------------------------------------------------
+
+  function moveTo(el, left, top, opts) {
+    opts = opts || {};
+    el.classList.add("walking");
+    if (opts.slow) { el.classList.add("slow-move"); } else { el.classList.remove("slow-move"); }
+
+    // 2026-07-13差し戻し検品で発覚した固まりバグへの対策：
+    // transitionendは、ホバー一時停止（hover-pause）でtransitionが中断された場合など、
+    // 発火しないことがある。それに依存しきると「移動中」のまま二度と自席へ戻れず、
+    // グローバルセマフォの枠も永久に埋まったままになる（団子問題より悪化する）。
+    // 想定所要時間＋余裕分で必ず完了させるフェイルセーフのタイマーを必ず併用する。
+    var done = false;
+    var fallbackTimer = null;
+
+    function finish() {
+      if (done) return;
+      done = true;
+      el.removeEventListener("transitionend", onEnd);
+      clearTimeout(fallbackTimer);
+      el.classList.remove("walking");
+      el.classList.remove("slow-move");
+      if (opts.onArrive) opts.onArrive();
+    }
+
+    function onEnd(ev) {
+      if (ev.target !== el) return;
+      finish();
+    }
+
+    el.addEventListener("transitionend", onEnd);
+    el.style.left = clamp(left, 4, 96) + "%";
+    el.style.top = clamp(top, 4, 96) + "%";
+    el.style.zIndex = String(100 + Math.round(clamp(top, 4, 96)));
+
+    var expectedDurationMs = (opts.slow ? 1800 : 1150) + 500;
+    fallbackTimer = setTimeout(finish, expectedDurationMs);
+  }
+
+  function scheduleActiveWalk(agentId, home, pool) {
+    var el = document.getElementById("char-" + agentId);
+    if (!el) return;
+
+    var firstCycle = true;
+
+    function cycle() {
+      // X録画の冒頭から動きが伝わるよう初回は数秒で出発し、以後も短い間隔で自然に巡回する。
+      // 同時離席数はセマフォで3体までに制限し、名札の重なりは防ぐ。
+      var delay = firstCycle ? (1200 + Math.random() * 4800) : (9000 + Math.random() * 13000);
+      firstCycle = false;
+      setTimeout(tryDepart, delay);
+    }
+
+    function tryDepart() {
+      // グローバルセマフォ：同時に守備移動できるのは最大2体。空きが無ければ強行せず、
+      // 短い間隔で再チェックする（無理に歩かせて団子を作らない）
+      if (awayFromDeskCount >= MAX_AWAY_FROM_DESK) {
+        setTimeout(tryDepart, 4000 + Math.random() * 5000);
+        return;
+      }
+      awayFromDeskCount++;
+      var dest = pickDestination(pool);
+      updateNameTag(agentId, "捕球へ");
+      moveTo(el, dest.left, dest.top, {
+        onArrive: function () {
+          el.classList.add("fielding");
+          var dwell = 700 + Math.random() * 600;
+          setTimeout(function () {
+            el.classList.remove("fielding");
+            updateNameTag(agentId, "送球中");
+            moveTo(el, home.left, home.top, {
+              onArrive: function () {
+                updateNameTag(agentId, "稼働中");
+                awayFromDeskCount--;
+                cycle();
+              }
+            });
+          }, dwell);
+        }
+      });
+    }
+
+    cycle();
+  }
+
+  function scheduleWander(agentId, home) {
+    var el = document.getElementById("char-" + agentId);
+    if (!el) return;
+
+    function cycle() {
+      var delay = 4000 + Math.random() * 4000;
+      setTimeout(function () {
+        var dx = (Math.random() - 0.5) * 8;
+        var dy = (Math.random() - 0.5) * 6;
+        updateNameTag(agentId, "守備確認");
+        moveTo(el, home.left + dx, home.top + dy, {
+          slow: true,
+          onArrive: function () {
+            updateNameTag(agentId, "待機");
+            cycle();
+          }
+        });
+      }, delay);
+    }
+    cycle();
+  }
+
+  // ---------------------------------------------------------------------
+  // 掲示板・成果物モニター（既存ロジック。変更なし）
+  // ---------------------------------------------------------------------
+
+  function renderStats(data) {
+    document.getElementById("stat-active").textContent =
+      data.stats.active_departments + " / " + data.stats.total_departments;
+    document.getElementById("stat-7d").textContent = data.stats.commits_7d + "件";
+    document.getElementById("stat-today").textContent = data.stats.commits_today + "件";
+    document.getElementById("stat-latest").textContent = data.stats.latest_artifact || "（データなし）";
+    document.getElementById("footer-gen").textContent = fmtDate(data.generated_at);
+  }
+
+  // config駆動のチーム名・見出し・ダグアウト表記を反映する（OSS公開対応：固有チーム名の埋め込みを撤去）
+  function renderBranding(data) {
+    var companyEl = document.querySelector("#signboard .company");
+    var subEl = document.querySelector("#signboard .sub");
+    if (companyEl) companyEl.textContent = data.team_name || "AI BALLPARK";
+    if (subEl) subEl.textContent = data.subtitle || "";
+    var scoreboardLabel = document.getElementById("scoreboard-label");
+    if (scoreboardLabel) scoreboardLabel.textContent = data.scoreboard_label || data.team_name || "AI BALLPARK";
+    var homeLabel = document.getElementById("dugout-label-home");
+    var awayLabel = document.getElementById("dugout-label-away");
+    if (homeLabel) homeLabel.textContent = data.home_label || "HOME";
+    if (awayLabel) awayLabel.textContent = data.away_label || "AWAY";
+    document.title = (data.team_name || "AI BALLPARK") + " - " + (data.agents ? data.agents.length : "") + "部署のAIチーム";
+
+    var n = data.agents ? data.agents.length : 0;
+    var headline = document.getElementById("mission-headline");
+    var sub = document.getElementById("mission-sub");
+    if (headline) headline.textContent = n + "人のAIエージェントが、それぞれの守備位置で会社を守る。";
+    if (sub) sub.textContent = "実際の成果と業務ログをもとに、" + (data.team_name || "チーム") + "のチームプレーを可視化";
+  }
+
+  function renderActivityFeed(agents) {
+    var feed = document.getElementById("activity-feed");
+    feed.innerHTML = "";
+    agents.filter(function (a) { return a.status === "active"; }).slice(0, 6).forEach(function (a, i) {
+      var card = document.createElement("div");
+      card.className = "activity-card";
+      card.style.animationDelay = (i * 80) + "ms";
+      var icon = document.createElement("span");
+      icon.className = "feed-icon";
+      icon.textContent = a.icon || "";
+      var name = document.createElement("strong");
+      name.textContent = (a.position ? a.position + " " : "") + a.name + "が守備中";
+      var task = document.createElement("span");
+      task.textContent = (a.bubbles && a.bubbles[0]) || "次の仕事を確認しています";
+      card.appendChild(icon);
+      card.appendChild(name);
+      card.appendChild(task);
+      feed.appendChild(card);
+    });
+  }
+
+  function initLogToggle() {
+    var rail = document.getElementById("terminal-rail");
+    var button = document.getElementById("log-toggle");
+    button.addEventListener("click", function () {
+      var open = rail.classList.toggle("show-logs");
+      button.textContent = open ? "活動表示" : "運用ログ";
+      button.setAttribute("aria-expanded", String(open));
+    });
+  }
+
+  function renderTicker(data) {
+    var screen = document.getElementById("monitor-screen");
+    var ticker = document.getElementById("monitor-ticker");
+    ticker.getAnimations().forEach(function (a) { a.cancel(); });
+    ticker.innerHTML = "";
+    var items = data.recent_artifacts || [];
+    if (items.length === 0) {
+      ticker.textContent = "直近の成果物データがありません";
+      return;
+    }
+    items.forEach(function (item) {
+      var span = document.createElement("span");
+      span.textContent = "[" + item.date + " " + item.dept + "] " + item.text;
+      ticker.appendChild(span);
+    });
+    items.forEach(function (item) {
+      var span = document.createElement("span");
+      span.textContent = "[" + item.date + " " + item.dept + "] " + item.text;
+      ticker.appendChild(span);
+    });
+
+    var containerWidth = screen.clientWidth;
+    var contentWidth = ticker.scrollWidth;
+    var distance = containerWidth + contentWidth;
+    var durationMs = Math.max(8000, (distance / TICKER_SPEED_PX_PER_SEC) * 1000);
+
+    ticker.animate(
+      [
+        { transform: "translate(" + containerWidth + "px, -50%)" },
+        { transform: "translate(" + (-contentWidth) + "px, -50%)" }
+      ],
+      { duration: durationMs, iterations: Infinity, easing: "linear" }
+    );
+  }
+
+  function buildBubbleQueue(agents) {
+    var perAgent = agents.map(function (a) {
+      var texts = (a.bubbles && a.bubbles.length > 0) ? a.bubbles.slice() : ["待機中"];
+      return { id: a.id, texts: texts, idx: 0 };
+    });
+    var queue = [];
+    var maxLen = Math.max.apply(null, perAgent.map(function (p) { return p.texts.length; }));
+    for (var round = 0; round < maxLen; round++) {
+      perAgent.forEach(function (p) {
+        var t = p.texts[round % p.texts.length];
+        queue.push({ agentId: p.id, text: t });
+      });
+    }
+    return queue;
+  }
+
+  function startBubbleRotation(agents) {
+    var queue = buildBubbleQueue(agents);
+    if (queue.length === 0) return;
+    var i = 0;
+
+    function showNext() {
+      var item = queue[i % queue.length];
+      i++;
+      var bubbleEl = document.getElementById("bubble-" + item.agentId);
+      if (!bubbleEl) { return; }
+      bubbleEl.textContent = item.text;
+      bubbleEl.classList.add("show");
+      setTimeout(function () {
+        bubbleEl.classList.remove("show");
+      }, BUBBLE_VISIBLE_MS);
+    }
+
+    // 球場全体を最初に認識できるよう、初回だけ少し待ってから実況吹き出しを出す。
+    setTimeout(function () {
+      showNext();
+      setInterval(showNext, ROTATE_MS);
+    }, 2500);
+  }
+
+  // ---------------------------------------------------------------------
+  // 詳細モーダル（クリックで開く。全て latestData 由来の実データ）
+  // ---------------------------------------------------------------------
+
+  var currentDetailAgentId = null;
+
+  function openDetail(agentId) {
+    if (!latestData) return;
+    var agent = latestData.agents.filter(function (a) { return a.id === agentId; })[0];
+    if (!agent) return;
+    currentDetailAgentId = agentId;
+
+    document.getElementById("detail-name").textContent = agent.name;
+    document.getElementById("detail-role").textContent = agent.role || "";
+    var statusText = agent.status === "active" ? "稼働中" : "待機中";
+    document.getElementById("detail-status").textContent =
+      "状態: " + statusText + " ／ 最終稼働: " + fmtDate(agent.last_active);
+
+    var bubblesUl = document.getElementById("detail-bubbles");
+    bubblesUl.innerHTML = "";
+    var bubbles = (agent.bubbles && agent.bubbles.length > 0) ? agent.bubbles : ["直近7日は稼働記録がありません"];
+    bubbles.forEach(function (b) {
+      var li = document.createElement("li");
+      li.textContent = b;
+      bubblesUl.appendChild(li);
+    });
+
+    var commitsUl = document.getElementById("detail-commits");
+    commitsUl.innerHTML = "";
+    var commits = agent.recent_commits || [];
+    if (commits.length === 0) {
+      var li0 = document.createElement("li");
+      li0.textContent = "記録されたコミットがありません";
+      commitsUl.appendChild(li0);
+    } else {
+      commits.forEach(function (c) {
+        var li = document.createElement("li");
+        var hash = document.createElement("span");
+        hash.className = "commit-hash";
+        hash.textContent = c.hash;
+        var date = document.createElement("span");
+        date.className = "commit-date";
+        date.textContent = c.date;
+        li.appendChild(hash);
+        li.appendChild(date);
+        li.appendChild(document.createTextNode(c.subject));
+        commitsUl.appendChild(li);
+      });
+    }
+
+    document.getElementById("detail-overlay").classList.add("show");
+  }
+
+  function closeDetail() {
+    document.getElementById("detail-overlay").classList.remove("show");
+  }
+
+  // ---------------------------------------------------------------------
+  // ターミナル（本物のログのみ）：/api/terminal をポーリングする
+  // ---------------------------------------------------------------------
+
+  function renderTerminal(payload) {
+    var body = document.getElementById("terminal-body");
+    var meta = document.getElementById("terminal-meta");
+    meta.textContent = "最終確認: " + fmtDate(payload.generated_at);
+
+    var key = JSON.stringify(payload.lines || []);
+    if (key === lastTerminalKey) return; // 内容に変化なし（タイムスタンプだけ更新済み）
+    lastTerminalKey = key;
+
+    body.innerHTML = "";
+    (payload.lines || []).forEach(function (line, i) {
+      var div = document.createElement("div");
+      div.className = "t-line";
+      div.style.animationDelay = (i * 25) + "ms";
+      div.textContent = line;
+      body.appendChild(div);
+    });
+    var cursor = document.createElement("span");
+    cursor.id = "terminal-cursor";
+    cursor.textContent = "▊";
+    body.appendChild(cursor);
+    body.scrollTop = body.scrollHeight;
+  }
+
+  function renderTerminalError(err) {
+    var body = document.getElementById("terminal-body");
+    var meta = document.getElementById("terminal-meta");
+    meta.textContent = "接続エラー";
+    if (lastTerminalKey !== "ERROR") {
+      lastTerminalKey = "ERROR";
+      body.textContent =
+        "ターミナルAPIに接続できません。serve_office.py 経由で開いているか確認してください。\n(" +
+        (err && err.message ? err.message : err) + ")";
+    }
+  }
+
+  function pollTerminal() {
+    fetch("./api/terminal", { cache: "no-store" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(renderTerminal)
+      .catch(renderTerminalError)
+      .then(function () {
+        setTimeout(pollTerminal, TERMINAL_POLL_MS);
+      });
+  }
+
+  // ---------------------------------------------------------------------
+  // 社長室チャット：指示は /api/instruct へ。偽の返信は絶対に作らない
+  // ---------------------------------------------------------------------
+
+  function appendChatLog(data, originalText) {
+    var log = document.getElementById("chat-log");
+    var entry = document.createElement("div");
+    entry.className = "chat-entry";
+
+    var meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = fmtDate(data.queued_at || new Date().toISOString()) +
+      (data.dept_name ? " → " + data.dept_name : "");
+    entry.appendChild(meta);
+
+    var body = document.createElement("div");
+    body.textContent = "指示: " + originalText;
+    entry.appendChild(body);
+
+    if (data.received) {
+      var msg = document.createElement("div");
+      msg.textContent = data.message || "受領しました。";
+      entry.appendChild(msg);
+
+      if (data.claude_attempted) {
+        var reply = document.createElement("div");
+        if (data.claude_reply) {
+          reply.className = "reply";
+          reply.textContent = "自動応答: " + data.claude_reply;
+        } else {
+          reply.className = "fail";
+          reply.textContent = "自動応答は利用できませんでした（" + (data.claude_error || "不明なエラー") + "）";
+        }
+        entry.appendChild(reply);
+      }
+    } else {
+      var fail = document.createElement("div");
+      fail.className = "fail";
+      fail.textContent = data.message || "送信に失敗しました。";
+      entry.appendChild(fail);
+    }
+
+    log.insertBefore(entry, log.firstChild);
+  }
+
+  // +エージェント追加／削除UI（Pixel Agents流の手軽さ）。
+  // 追加・削除が成功した後は、歩行タイマーやイベントリスナーの二重登録を避けるため
+  // シンプルにページを再読み込みする（低頻度の管理操作なので、複雑な差分更新より安全）。
+  function initAgentManager() {
+    var addBtn = document.getElementById("add-agent-btn");
+    var overlay = document.getElementById("add-agent-overlay");
+    var closeBtn = document.getElementById("add-agent-close");
+    var form = document.getElementById("add-agent-form");
+    var errorEl = document.getElementById("add-agent-error");
+    var submitBtn = document.getElementById("add-agent-submit");
+
+    function openModal() {
+      errorEl.textContent = "";
+      form.reset();
+      overlay.classList.add("show");
+    }
+    function closeModal() {
+      overlay.classList.remove("show");
+    }
+
+    addBtn.addEventListener("click", openModal);
+    closeBtn.addEventListener("click", closeModal);
+    overlay.addEventListener("click", function (ev) {
+      if (ev.target.id === "add-agent-overlay") closeModal();
+    });
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape" && overlay.classList.contains("show")) closeModal();
+    });
+
+    function linesToList(value) {
+      return value.split("\n").map(function (s) { return s.trim(); }).filter(Boolean);
+    }
+
+    form.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      errorEl.textContent = "";
+      var payload = {
+        id: document.getElementById("aa-id").value.trim(),
+        name: document.getElementById("aa-name").value.trim(),
+        role: document.getElementById("aa-role").value.trim(),
+        color: document.getElementById("aa-color").value,
+        position: document.getElementById("aa-position").value || null,
+        match: {
+          path_prefixes: linesToList(document.getElementById("aa-paths").value),
+          scope_tokens: linesToList(document.getElementById("aa-scopes").value),
+          subject_keywords: []
+        }
+      };
+      submitBtn.disabled = true;
+      fetch("./api/agents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+        .then(function (res) {
+          return res.json().then(function (j) {
+            if (!res.ok || j.error) throw new Error(j.error || ("HTTP " + res.status));
+            return j;
+          });
+        })
+        .then(function () {
+          window.location.reload();
+        })
+        .catch(function (err) {
+          errorEl.textContent = err.message || String(err);
+          submitBtn.disabled = false;
+        });
+    });
+
+    document.getElementById("detail-remove").addEventListener("click", function () {
+      if (!currentDetailAgentId || !latestData) return;
+      var agent = latestData.agents.filter(function (a) { return a.id === currentDetailAgentId; })[0];
+      var label = agent ? agent.name : currentDetailAgentId;
+      if (!window.confirm(label + " を削除しますか？この操作は取り消せません。")) return;
+      fetch("./api/agents/" + encodeURIComponent(currentDetailAgentId), { method: "DELETE" })
+        .then(function (res) {
+          return res.json().then(function (j) {
+            if (!res.ok || j.error) throw new Error(j.error || ("HTTP " + res.status));
+            return j;
+          });
+        })
+        .then(function () {
+          window.location.reload();
+        })
+        .catch(function (err) {
+          window.alert("削除に失敗しました: " + (err.message || err));
+        });
+    });
+  }
+
+  function initChat(agents) {
+    var select = document.getElementById("chat-dept");
+    select.innerHTML = "";
+    agents.forEach(function (a) {
+      var opt = document.createElement("option");
+      opt.value = a.id;
+      opt.textContent = a.name;
+      if (a.is_center) opt.selected = true;
+      select.appendChild(opt);
+    });
+
+    var form = document.getElementById("chat-form-el");
+
+    // 2026-07-13差し戻し対応：Enterキーでの送信を明示的にも保証する
+    // （ブラウザの既定動作＝input内Enterでform submitに任せるだけでなく、
+    //  IME確定Enterとの衝突等を避けるため明示ハンドラでも拾う。
+    //  preventDefaultしてから手動でrequestSubmitし、二重送信を防ぐ）
+    document.getElementById("chat-text").addEventListener("keydown", function (ev) {
+      if (ev.isComposing) return; // IME変換確定のEnterは無視
+      var isEnter = ev.key === "Enter" || ev.keyCode === 13 || ev.which === 13;
+      if (!isEnter) return;
+      ev.preventDefault();
+      if (form.requestSubmit) {
+        form.requestSubmit();
+      } else {
+        form.dispatchEvent(new Event("submit", { cancelable: true }));
+      }
+    });
+
+    form.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var textEl = document.getElementById("chat-text");
+      var text = textEl.value.trim();
+      if (!text) return;
+      var dept = select.value;
+      var sendBtn = document.getElementById("chat-send");
+      sendBtn.disabled = true;
+
+      fetch("./api/instruct", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dept: dept, text: text })
+      })
+        .then(function (res) {
+          return res.json().then(function (j) {
+            if (!res.ok) throw new Error(j.error || ("HTTP " + res.status));
+            return j;
+          });
+        })
+        .then(function (data) {
+          appendChatLog(data, text);
+          textEl.value = "";
+          textEl.focus(); // 送信後にactiveElementがbodyへ落ちて「送信できていない」ように見えるのを防ぐ
+        })
+        .catch(function (err) {
+          appendChatLog(
+            { received: false, message: "送信に失敗しました: " + (err.message || err) },
+            text
+          );
+        })
+        .then(function () {
+          sendBtn.disabled = false;
+        });
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // 初期化
+  // ---------------------------------------------------------------------
+
+  function init(data) {
+    latestData = data;
+    var positions = computeLayoutPositions(data.agents);
+    var destinationPools = buildDestinationPool(data.agents, positions);
+
+    renderBranding(data);
+    buildFurniture(data.agents, positions);
+    buildCharacters(data.agents, positions);
+    renderStats(data);
+    renderActivityFeed(data.agents);
+    renderTicker(data);
+    startBubbleRotation(data.agents);
+    initChat(data.agents);
+    initLogToggle();
+    pollTerminal();
+    initAgentManager(data.agents);
+
+    data.agents.forEach(function (a) {
+      var home = positions[a.id];
+      if (!home) return;
+      if (a.status === "active") {
+        scheduleActiveWalk(a.id, home, destinationPools[a.id]);
+      } else {
+        scheduleWander(a.id, home);
+      }
+    });
+
+    document.getElementById("detail-close").addEventListener("click", closeDetail);
+    document.getElementById("detail-overlay").addEventListener("click", function (ev) {
+      if (ev.target.id === "detail-overlay") closeDetail();
+    });
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") closeDetail();
+    });
+  }
+
+  fetch("./data.json", { cache: "no-store" })
+    .then(function (res) {
+      if (!res.ok) throw new Error("data.json の読み込みに失敗しました: HTTP " + res.status);
+      return res.json();
+    })
+    .then(init)
+    .catch(function (err) {
+      console.error(err);
+      var floor = document.getElementById("floor");
+      floor.innerHTML =
+        '<div style="color:#f3e6cf;text-align:center;margin-top:10%;font-size:14px;">' +
+        'data.json の読み込みに失敗しました。ローカルサーバー経由（例: python3 serve_office.py）で開いてください。<br>' +
+        String(err.message || err) +
+        "</div>";
+    });
+})();
+</script>
+</body>
+</html>

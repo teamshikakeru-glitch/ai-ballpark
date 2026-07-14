@@ -1,0 +1,13 @@
+# ローカル設定・生成物（リポジトリには含めない。samples/ 配下のsampleファイルはコミット対象）
+/agents.config.json
+/mask.config.json
+/data.json
+/instructions/
+/dist-public/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
